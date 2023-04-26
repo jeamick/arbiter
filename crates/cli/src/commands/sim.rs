@@ -362,38 +362,6 @@ fn intitalization_calls(
 
     println!("pool_id: {:#?}", pool_id);
 
-    // get liquidity delta
-    let get_delta_builder = (
-        // pool_id: u64,
-        pool_id,
-        // amount_0: u128,
-        ethers::types::U256::from(100000),
-        // amount_1: u128,
-        ethers::types::U256::from(100000),
-    );
-
-    let get_liquidity_delta_call: Bytes = i_portfolio.encode("getMaxLiquidity", get_delta_builder)?.into_iter().collect();
-    println!("get_liquidity_delta_to_bytes: {:#?}", hex::encode(get_liquidity_delta_call.clone()));
-    // Call data looks like this: 
-    // d6b7dec500000000000000000000000000000000000000000000000000000002540be40100000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000003e8
-    let get_liquidity_delta_result = admin.call_contract(
-        &mut manager.environment,
-        &portfolio,
-        get_liquidity_delta_call,
-        Uint::from(0),
-    );
-    println!("get_liquidity_delta_result: {:#?}", get_liquidity_delta_result);
-    assert_eq!(get_liquidity_delta_result.is_success(), true);
-
-    let result_object: Bytes = manager.unpack_execution(get_liquidity_delta_result)?;
-    let decoded_encoded_data: Bytes =
-        portfolio.decode_output("getMaxLiquidity", result_object)?;
-    println!(
-        "encoded get max liquidity result: {:#?}",
-        hex::encode(decoded_encoded_data.clone())
-    );
-
-
     let allocate_builder = (
         // should_allocate: bool,
         true,
