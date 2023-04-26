@@ -151,7 +151,7 @@ fn intitalization_calls(
     let arbitrageur = manager.agents.get("arbitrageur").unwrap();
 
     // Allocating new tokens to user by calling Arbiter Token's ERC20 'mint' instance.
-    let mint_amount = U256::from(10000000);
+    let mint_amount = U256::from(1000000000000u128);
     let input_arguments = (recast_address(arbitrageur.address()), mint_amount);
     let call_data = arbiter_token_x.encode_function("mint", input_arguments)?;
 
@@ -358,8 +358,40 @@ fn intitalization_calls(
     // 0x|000001|00|00000001
     let pool_id: Bytes = hex::decode("0000010000000001".as_bytes())?.into_iter().collect();
     //         let encoded_from_string: Bytes = hex::decode("0b0000010000000000000000000000000000000000000000000100010064ffff0001340000000000000000000de0b6b3a76400000000000000000000000de0b6b3a764".as_bytes())?.into_iter().collect();
+    let pool_id: u64 = hex::encode(pool_id).to_string().parse::<u64>().unwrap();
 
     println!("pool_id: {:#?}", pool_id);
+
+    // get liquidity delta
+    let get_delta_builder = (
+        // pool_id: u64,
+        pool_id,
+        // amount_0: u128,
+        ethers::types::U256::from(100000),
+        // amount_1: u128,
+        ethers::types::U256::from(100000),
+    );
+
+    let get_liquidity_delta_call: Bytes = i_portfolio.encode("getMaxLiquidity", get_delta_builder)?.into_iter().collect();
+    println!("get_liquidity_delta_to_bytes: {:#?}", hex::encode(get_liquidity_delta_call.clone()));
+    // Call data looks like this: 
+    // d6b7dec500000000000000000000000000000000000000000000000000000002540be40100000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000003e8
+    let get_liquidity_delta_result = admin.call_contract(
+        &mut manager.environment,
+        &portfolio,
+        get_liquidity_delta_call,
+        Uint::from(0),
+    );
+    println!("get_liquidity_delta_result: {:#?}", get_liquidity_delta_result);
+    assert_eq!(get_liquidity_delta_result.is_success(), true);
+
+    let result_object: Bytes = manager.unpack_execution(get_liquidity_delta_result)?;
+    let decoded_encoded_data: Bytes =
+        portfolio.decode_output("getMaxLiquidity", result_object)?;
+    println!(
+        "encoded get max liquidity result: {:#?}",
+        hex::encode(decoded_encoded_data.clone())
+    );
 
 
     let allocate_builder = (
@@ -368,7 +400,7 @@ fn intitalization_calls(
         // use_max: u8,
         0u8,
         // pool_id: u64,
-        100_u64,
+        pool_id,
         // delta_liquidity: u128,
         1000_u64,
         // amount_0: u128,
@@ -376,6 +408,7 @@ fn intitalization_calls(
         // amount_1: u128,
         1000_u128,
     );
+
     
     let allocate_call = encoder_target.encode_function("allocateOrDeallocate", allocate_builder)?;
     let allocate_encode_result = admin.call_contract(&mut manager.environment, &encoder_target, allocate_call, Uint::from(0));
@@ -384,7 +417,7 @@ fn intitalization_calls(
     let decoded_encoded_data: Bytes =
         encoder_target.decode_output("allocateOrDeallocate", result_object)?;
     println!(
-        "encoded_create_pool_result: {:#?}",
+        "encoded_allocate_result: {:#?}",
         hex::encode(decoded_encoded_data.clone())
     );
     // This is what we get, need to go over this with matt
