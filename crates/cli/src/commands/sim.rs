@@ -162,6 +162,7 @@ fn intitalization_calls(
         call_data.clone(),
         Uint::from(0),
     ); // TODO: SOME KIND OF ERROR HANDLING IS NECESSARY FOR THESE TYPES OF CALLS
+    assert_eq!(execution_result.is_success(), true);
     println!(
         "Minted token_x to arber {:#?}",
         execution_result.is_success()
@@ -173,13 +174,14 @@ fn intitalization_calls(
         call_data,
         Uint::from(0),
     ); // TODO: SOME KIND OF ERROR HANDLING IS NECESSARY FOR THESE TYPES OF CALLS
+    assert_eq!(execution_result.is_success(), true);
     println!(
         "Minted token_y to arber: {:#?}",
         execution_result.is_success()
     );
 
     // Mint max token_y to the liquid_exchange contract.
-    let args = (recast_address(liquid_exchange_xy.address), U256::MAX);
+    let args = (recast_address(liquid_exchange_xy.address), mint_amount);
     let call_data = arbiter_token_y.encode_function("mint", args)?;
     let result = admin.call_contract(
         &mut manager.environment,
@@ -187,6 +189,7 @@ fn intitalization_calls(
         call_data,
         Uint::from(0),
     );
+    assert_eq!(result.is_success(), true);
     println!(
         "Minted token_y to liquid_excahnge: {:#?}",
         result.is_success()
@@ -204,6 +207,7 @@ fn intitalization_calls(
         call_data,
         Uint::from(0),
     );
+    assert_eq!(result.is_success(), true);
     println!(
         "Aproved token_x to liquid_excahnge for arber: {:#?}",
         result.is_success()
@@ -217,6 +221,7 @@ fn intitalization_calls(
         call_data,
         Uint::from(0),
     );
+    assert_eq!(result.is_success(), true);
     println!(
         "Aproved token_y to liquid_excahnge for arber: {:#?}",
         result.is_success()
@@ -232,6 +237,7 @@ fn intitalization_calls(
         call_data,
         Uint::from(0),
     );
+    assert_eq!(result.is_success(), true);
     println!(
         "Aproved token_y to portfolio for arber: {:#?}",
         result.is_success()
@@ -244,11 +250,12 @@ fn intitalization_calls(
         call_data,
         Uint::from(0),
     );
+    assert_eq!(result.is_success(), true);
     println!(
         "Aproved token_y to portfolio for arber: {:#?}",
         result.is_success()
     );
-
+    // encode CreatePair
     let encoder_args = (
         recast_address(arbiter_token_x.address),
         recast_address(arbiter_token_y.address),
@@ -261,6 +268,7 @@ fn intitalization_calls(
         encoder_create_pair_call_data,
         Uint::from(0),
     );
+    assert_eq!(encoded_create_pair_result.is_success(), true);
     // Encoder Target encoding
     let encoded_data = manager.unpack_execution(encoded_create_pair_result)?;
     let decoded_encoded_data: Bytes = encoder_target.decode_output("createPair", encoded_data)?;
@@ -274,6 +282,7 @@ fn intitalization_calls(
         portfolio_create_pair_call_data,
         Uint::from(0),
     );
+    assert_eq!(encoded_create_pair_result.is_success(), true);
     println!(
         "Encoded create pair with encoder target encoding: {:#?}",
         encoded_create_pair_result.is_success()
@@ -298,6 +307,7 @@ fn intitalization_calls(
         encoded_pair,
         Uint::from(0),
     );
+    assert_eq!(pairs.is_success(), true);
     let result = manager.unpack_execution(pairs)?;
     let decoded_pairs_response: (H160, u8, H160, u8) = i_portfolio.decode_output("pairs", result)?;
 
@@ -329,7 +339,7 @@ fn intitalization_calls(
 
     let call = encoder_target.encode_function("createPool", create_pool_builder)?;
     let result = admin.call_contract(&mut manager.environment, &encoder_target, call, Uint::from(0));
-
+    assert_eq!(result.is_success(), ture);
     let result_object: Bytes = manager.unpack_execution(result)?;
     let decoded_encoded_data: Bytes =
         encoder_target.decode_output("createPair", result_object)?;
@@ -388,6 +398,16 @@ fn intitalization_calls(
         "encoded_allocate_result: {:#?}",
         hex::encode(decoded_encoded_data.clone())
     );
+
+    let allocate_call = portfolio.encode_function("multiprocess", decoded_encoded_data)?;
+    println!("allocate_call: {:#?}", hex::encode(allocate_call.clone()));
+    let result = admin.call_contract(
+        &mut manager.environment,
+        &portfolio,
+        allocate_call,
+        Uint::from(0),
+    );
+    println!("allocate_result: {:#?}", result);
     // This is what we get, need to go over this with matt
     // |01|00|00|0000000000641c2d030000000000000000000000000000000103000000000000000000000000000000010300000000000000000000000000000001
     //  * `0x | ALLOCATE or DEALLOCATE (1 byte) | useMax (1 byte) | poolId (8 bytes) | pointerPowerDeltaAsset | pointerDeltaQuote | powerDeltaLiquidity (1 byte) | baseDeltaLiquidity (? bytes) | powerDeltaAsset (1 byte) | baseDeltaAsset (? bytes) | powerDeltaQuote (1 byte) | baseDeltaQuote (? bytes)`\
