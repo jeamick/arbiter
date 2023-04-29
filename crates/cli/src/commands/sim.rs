@@ -339,7 +339,7 @@ fn intitalization_calls(
 
     let call = encoder_target.encode_function("createPool", create_pool_builder)?;
     let result = admin.call_contract(&mut manager.environment, &encoder_target, call, Uint::from(0));
-    assert_eq!(result.is_success(), ture);
+    assert_eq!(result.is_success(), true);
     let result_object: Bytes = manager.unpack_execution(result)?;
     let decoded_encoded_data: Bytes =
         encoder_target.decode_output("createPair", result_object)?;
@@ -372,6 +372,21 @@ fn intitalization_calls(
 
     println!("pool_id: {:#?}", pool_id);
 
+    let args_to_get_max_liquidity  = (
+        pool_id,
+        U256::from_dec_str("1000")?,
+        U256::from_dec_str("1000")?,
+    );
+
+    // let i_portfolio = SimulationContract::new(i_portfolio::IPORTFOLIO_ABI.clone(), rmm01_portfolio::RMM01PORTFOLIO_BYTECODE.clone());
+    // let ip = i_portfolio.deploy(&mut manager.environment, admin, ());
+    // println!("WETH deployed at: {}", ip.address);
+
+    let call_data_max_liquidity: Bytes = i_portfolio.encode("getMaxLiquidity", args_to_get_max_liquidity)?.into_iter().collect();
+
+    let max_liquidity_result = admin.call_contract(&mut manager.environment, &portfolio, call_data_max_liquidity, Uint::from(0));
+    assert_eq!(max_liquidity_result.is_success(), true);
+
     let allocate_builder = (
         // should_allocate: bool,
         true,
@@ -398,6 +413,8 @@ fn intitalization_calls(
         "encoded_allocate_result: {:#?}",
         hex::encode(decoded_encoded_data.clone())
     );
+
+    // return a0fdf4130000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003e0100000002540be4011c2d0300000000000000000000000000000001030000000000000000000000000000000103000000000000000000000000000000010000
 
     let allocate_call = portfolio.encode_function("multiprocess", decoded_encoded_data)?;
     println!("allocate_call: {:#?}", hex::encode(allocate_call.clone()));
