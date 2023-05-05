@@ -16,6 +16,13 @@ use futures::stream::StreamExt;
 
 pub mod utils;
 
+/// Enum that represents the protocol to monitor.
+pub enum Protocol {
+    /// Uniswap V3 Pool contracts.
+    UniswapV3,
+    /// Balancer V2 Pool contracts.
+    BalancerV2,
+}
 /// Houses a provider to talk to the chain.
 /// # Fields
 /// * `provider` - Provider to talk to the chain. (Arc<Provider<Http>>)
@@ -68,12 +75,14 @@ impl EventMonitor {
 pub struct HistoricalMonitor {
     /// Provider to talk to the chain.
     pub provider: Arc<Provider<Http>>,
+    /// Protocol to monitor.
+    pub protocol: Protocol,
 }
 impl HistoricalMonitor {
     /// Public builder function that instantiates a default implementation of `historical_monitor`.
-    pub async fn new(rpc_type: utils::RpcTypes) -> Self {
+    pub async fn new(rpc_type: utils::RpcTypes, protocol: Protocol) -> Self {
         let provider = utils::get_provider(rpc_type).await;
-        Self { provider }
+        Self { provider, protocol }
     }
     /// pulls historical swap event price data for a given contract from a given provider.
     /// # Arguments
@@ -108,51 +117,56 @@ impl HistoricalMonitor {
             .await
             .expect("Failed to query past logs");
 
-        let swap_event = "Swap";
-
-        /// Struct that represents the Swap event from the Uniswap V3 contract.
-        /// # Fields
-        /// * `sender` - Address of the sender.
-        /// * `recipient` - Address of the recipient.
-        /// * `amount0` - Amount of token0.
-        /// * `amount1` - Amount of token1.
-        /// * `sqrt_price_x96` - Price of the swap.
-        /// * `liquidity` - Liquidity of the swap.
-        /// * `tick` - Tick of the swap.
-        pub struct Swap {
-            /// Address of the sender.
-            pub sender: Address,
-            /// Address of the recipient.
-            pub recipient: Address,
-            /// Amount of token0.
-            pub amount0: I256,
-            /// Amount of token1.
-            pub amount1: I256,
-            /// Price of the swap.
-            pub sqrt_price_x96: U256,
-            /// Liquidity of the swap.
-            pub liquidity: U256,
-            /// Tick of the swap.
-            pub tick: i32,
-        }
-
         let mut price_data: Vec<U256> = Vec::new();
+        match self.protocol {
+            Protocol::UniswapV3 => {
+                let swap_event = "Swap";
+                /// Struct that represents the Swap event from the Uniswap V3 contract.
+                /// # Fields
+                /// * `sender` - Address of the sender.
+                /// * `recipient` - Address of the recipient.
+                /// * `amount0` - Amount of token0.
+                /// * `amount1` - Amount of token1.
+                /// * `sqrt_price_x96` - Price of the swap.
+                /// * `liquidity` - Liquidity of the swap.
+                /// * `tick` - Tick of the swap.
+                pub struct Swap {
+                    /// Address of the sender.
+                    pub sender: Address,
+                    /// Address of the recipient.
+                    pub recipient: Address,
+                    /// Amount of token0.
+                    pub amount0: I256,
+                    /// Amount of token1.
+                    pub amount1: I256,
+                    /// Price of the swap.
+                    pub sqrt_price_x96: U256,
+                    /// Liquidity of the swap.
+                    pub liquidity: U256,
+                    /// Tick of the swap.
+                    pub tick: i32,
+                }
 
-        for log in past_logs {
-            let log_topics: Vec<H256> = log.topics.clone();
-            let log_data = log.data.0.into_iter().collect();
+                for log in past_logs {
+                    let log_topics: Vec<H256> = log.topics.clone();
+                    let log_data = log.data.0.into_iter().collect();
 
-            let decoded_swap_event = match contract // Decode Swap event from Uniswap V3 contract
-                .decode_event::<(H160, H160, I256, I256, U256, U256, i32)>(
-                    swap_event, log_topics, log_data,
-                ) {
-                Ok(event) => event,
-                Err(_) => continue, /* Some blocks don't have any events which will throw an error. We're ignoring these */
-            };
+                    let decoded_swap_event = match contract // Decode Swap event from Uniswap V3 contract
+                        .decode_event::<(H160, H160, I256, I256, U256, U256, i32)>(
+                            swap_event, log_topics, log_data,
+                        ) {
+                        Ok(event) => event,
+                        Err(_) => continue, /* Some blocks don't have any events which will throw an error. We're ignoring these */
+                    };
 
-            let (_sender, _recipient, _amount0, _amount1, _sqrt_price_x96, _liquidity, _tick) =
-                decoded_swap_event;
-            price_data.push(_sqrt_price_x96);
+                    let (_sender, _recipient, _amount0, _amount1, _sqrt_price_x96, _liquidity, _tick) =
+                    decoded_swap_event;
+                    price_data.push(_sqrt_price_x96);
+                }
+            }
+            Protocol::BalancerV2 => {
+                let swap_event = "Swap";
+            }
         }
         Ok(price_data)
     }
