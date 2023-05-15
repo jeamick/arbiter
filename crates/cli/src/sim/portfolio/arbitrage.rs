@@ -65,7 +65,7 @@ pub(crate) fn compute_arb_size(
     let iv = U256::from(pool_params.volatility) * U256::from(10_u128.pow(18))
         / U256::from(10u128.pow(4));
     let tau = U256::from(31556953u128); // 1 year in seconds
-    // compute the ratio
+                                        // compute the ratio
     let int_ratio = I256::from_raw(ratio);
     // compute logarithm
     let execution_result = admin.call_contract(
